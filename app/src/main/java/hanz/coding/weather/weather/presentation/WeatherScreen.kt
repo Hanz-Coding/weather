@@ -1,5 +1,6 @@
-package hanz.coding.weather.presentation
+package hanz.coding.weather.weather.presentation
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -33,10 +34,22 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import hanz.coding.weather.R
+import hanz.coding.weather.weather.domain.weather.WeatherData
+import hanz.coding.weather.weather.domain.weather.WeatherTemperature
+import java.time.format.DateTimeFormatter
 
+@SuppressLint("NewApi")
 @Preview
 @Composable
-fun WeatherScreen(modifier: Modifier = Modifier) {
+fun WeatherScreen(
+    weatherState: WeatherState,
+    modifier: Modifier = Modifier
+) {
+    val weatherData = weatherState.weatherInfo?.currentWeatherData ?: return
+    val weatherTemp = weatherState.weatherInfo.weatherTemperature ?: return
+    val tempMax = weatherTemp[0].tempMax
+    val tempMin = weatherTemp[0].tempMin
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -56,7 +69,7 @@ fun WeatherScreen(modifier: Modifier = Modifier) {
             ) {
                 item {
                     Text(
-                        text = "Mostly Cloudy",
+                        text = weatherData.weatherType.weatherDesc,
                         fontSize = 20.sp,
                         color = Color.White,
                         modifier = Modifier
@@ -66,7 +79,7 @@ fun WeatherScreen(modifier: Modifier = Modifier) {
                     )
 
                     Image(
-                        painter = painterResource(R.drawable.cloudy),
+                        painter = painterResource(weatherData.weatherType.iconRes),
                         contentDescription = null,
                         modifier = Modifier
                             .size(150.dp)
@@ -74,7 +87,7 @@ fun WeatherScreen(modifier: Modifier = Modifier) {
                     )
 
                     Text(
-                        text = "Mon June 17 | 10:00 AM",
+                        text = weatherData.time.format(DateTimeFormatter.ofPattern("EEE MMM dd : hh:mm a")),
                         fontSize = 19.sp,
                         color = Color.White,
                         modifier = Modifier
@@ -83,7 +96,7 @@ fun WeatherScreen(modifier: Modifier = Modifier) {
                         textAlign = TextAlign.Center
                     )
                     Text(
-                        text = "25",
+                        text = weatherData.temperatureCelsius.toString(),
                         fontSize = 63.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White,
@@ -94,7 +107,7 @@ fun WeatherScreen(modifier: Modifier = Modifier) {
                     )
 
                     Text(
-                        text = "H:27 L18",
+                        text = "H:$tempMax L$tempMin",
                         fontSize = 19.sp,
                         color = Color.White,
                         modifier = Modifier
@@ -116,13 +129,21 @@ fun WeatherScreen(modifier: Modifier = Modifier) {
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 8.dp)
-                                .height(100.dp),
+                                .height(120.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            WeatherDetailItem(R.drawable.rain, "22%", "Rain")
-                            WeatherDetailItem(R.drawable.wind, "22%", "Wind Speed")
-                            WeatherDetailItem(R.drawable.humidity, "18%", "Humidity")
+                            WeatherDetailItem(R.drawable.rain, "${weatherData.rain} mm", "Rain")
+                            WeatherDetailItem(
+                                R.drawable.wind,
+                                "${weatherData.windSpeed} km/h",
+                                "Wind Speed"
+                            )
+                            WeatherDetailItem(
+                                R.drawable.humidity,
+                                "${weatherData.humidity} %",
+                                "Humidity"
+                            )
                         }
                     }
 
@@ -135,18 +156,20 @@ fun WeatherScreen(modifier: Modifier = Modifier) {
                             .padding(horizontal = 24.dp, vertical = 16.dp),
                     )
                 }
-                item {
-                    LazyRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        contentPadding = PaddingValues(horizontal = 20.dp),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        items(items) { item ->
-                            FutureHourlyViewHolder(item)
+                val futureHourlyItems = weatherState.weatherInfo.futureHourlyData
+                if (futureHourlyItems != null) {
+                    item {
+                        LazyRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentPadding = PaddingValues(horizontal = 20.dp),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            items(futureHourlyItems) { item ->
+                                FutureHourlyViewHolder(item)
+                            }
                         }
                     }
                 }
-
                 item {
                     Row(
                         modifier = Modifier
@@ -169,7 +192,7 @@ fun WeatherScreen(modifier: Modifier = Modifier) {
                         )
                     }
                 }
-                items(futureItems) { item ->
+                items(weatherState.weatherInfo.weatherTemperature) { item ->
                     FutureItem(item)
                 }
             }
@@ -178,7 +201,7 @@ fun WeatherScreen(modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun FutureItem(futureItem: FutureModel) {
+fun FutureItem(weatherTemperature: WeatherTemperature) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -186,13 +209,13 @@ fun FutureItem(futureItem: FutureModel) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = futureItem.day,
+            text = weatherTemperature.time.format(DateTimeFormatter.ofPattern("EEE")),
             fontSize = 14.sp,
             color = Color.White,
         )
 
         Image(
-            painter = painterResource(getDrawableResourceId(futureItem.picPath)),
+            painter = painterResource(weatherTemperature.weatherType.iconRes),
             contentDescription = null,
             modifier = Modifier
                 .padding(start = 32.dp)
@@ -200,7 +223,7 @@ fun FutureItem(futureItem: FutureModel) {
         )
 
         Text(
-            text = futureItem.status,
+            text = weatherTemperature.weatherType.weatherDesc,
             fontSize = 14.sp,
             color = Color.White,
             modifier = Modifier
@@ -208,14 +231,14 @@ fun FutureItem(futureItem: FutureModel) {
                 .padding(start = 16.dp)
         )
         Text(
-            text = "${futureItem.highTemp}",
+            text = "${weatherTemperature.tempMax}",
             fontSize = 14.sp,
             color = Color.White,
             modifier = Modifier
                 .padding(end = 16.dp)
         )
         Text(
-            text = "${futureItem.lowTemp}",
+            text = "${weatherTemperature.tempMin}",
             fontSize = 14.sp,
             color = Color.White,
             modifier = Modifier
@@ -275,7 +298,7 @@ val futureItems = listOf(
 )
 
 @Composable
-fun FutureHourlyViewHolder(hourlyModel: HourlyModel) {
+fun FutureHourlyViewHolder(weatherData: WeatherData) {
     Column(
         modifier = Modifier
             .width(90.dp)
@@ -288,7 +311,7 @@ fun FutureHourlyViewHolder(hourlyModel: HourlyModel) {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = hourlyModel.hour,
+            text = weatherData.time.format(DateTimeFormatter.ofPattern("h a")),
             color = Color.White,
             fontSize = 16.sp,
             modifier = Modifier
@@ -299,14 +322,7 @@ fun FutureHourlyViewHolder(hourlyModel: HourlyModel) {
 
         Image(
             painter = painterResource(
-                id = when (hourlyModel.picPath) {
-                    "cloudy" -> R.drawable.cloudy
-                    "sunny" -> R.drawable.sunny
-                    "wind" -> R.drawable.wind
-                    "rainy" -> R.drawable.rainy
-                    "storm" -> R.drawable.storm
-                    else -> R.drawable.sunny
-                }
+                weatherData.weatherType.iconRes
             ),
             contentDescription = null,
             modifier = Modifier
@@ -316,7 +332,7 @@ fun FutureHourlyViewHolder(hourlyModel: HourlyModel) {
         )
 
         Text(
-            text = "${hourlyModel.temp}",
+            text = "${weatherData.temperatureCelsius}",
             color = Color.White,
             fontSize = 18.sp,
             modifier = Modifier
@@ -326,15 +342,6 @@ fun FutureHourlyViewHolder(hourlyModel: HourlyModel) {
         )
     }
 }
-
-val items = listOf(
-    HourlyModel(hour = "9 pm", temp = 22, picPath = "cloudy"),
-    HourlyModel(hour = "9 pm", temp = 22, picPath = "sunny"),
-    HourlyModel(hour = "9 pm", temp = 22, picPath = "wind"),
-    HourlyModel(hour = "9 pm", temp = 22, picPath = "rainy"),
-    HourlyModel(hour = "9 pm", temp = 22, picPath = "storm"),
-    HourlyModel(hour = "9 pm", temp = 22, picPath = "cloudy")
-)
 
 @Composable
 fun WeatherDetailItem(icon: Int, value: String, label: String) {

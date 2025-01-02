@@ -1,4 +1,4 @@
-package hanz.coding.weather.presentation
+package hanz.coding.weather.weather.presentation
 
 data class FutureModel(
     val day: String,
